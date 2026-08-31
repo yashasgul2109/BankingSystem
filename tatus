@@ -1,0 +1,130 @@
+warning: in the working copy of 'app/src/main/java/org/example/controller/AuthController.java', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'app/src/main/java/org/example/service/AuthService.java', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/app/build.gradle b/app/build.gradle[m
+[1mindex 595a3d6..6ebc576 100644[m
+[1m--- a/app/build.gradle[m
+[1m+++ b/app/build.gradle[m
+[36m@@ -29,6 +29,9 @@[m [mimplementation 'org.springframework.security:spring-security-crypto'[m
+ [m
+     // Validation[m
+     implementation 'org.springframework.boot:spring-boot-starter-validation'[m
+[32m+[m[32m    implementation 'io.jsonwebtoken:jjwt-api:0.12.6'[m
+[32m+[m[32mruntimeOnly 'io.jsonwebtoken:jjwt-impl:0.12.6'[m
+[32m+[m[32mruntimeOnly 'io.jsonwebtoken:jjwt-jackson:0.12.6'[m
+ [m
+     // Lombok[m
+     compileOnly 'org.projectlombok:lombok'[m
+[1mdiff --git a/app/src/main/java/org/example/controller/AuthController.java b/app/src/main/java/org/example/controller/AuthController.java[m
+[1mindex 328d6a1..932e385 100644[m
+[1m--- a/app/src/main/java/org/example/controller/AuthController.java[m
+[1m+++ b/app/src/main/java/org/example/controller/AuthController.java[m
+[36m@@ -1,13 +1,12 @@[m
+ package org.example.controller;[m
+ [m
+[32m+[m[32mimport org.example.dto.AuthResponse;[m
+ import org.example.dto.LoginRequest;[m
+[32m+[m[32mimport org.example.dto.RefreshTokenRequest;[m
+ import org.example.dto.SignupRequest;[m
+ import org.example.entity.User;[m
+ import org.example.service.AuthService;[m
+[31m-import org.springframework.web.bind.annotation.PostMapping;[m
+[31m-import org.springframework.web.bind.annotation.RequestBody;[m
+[31m-import org.springframework.web.bind.annotation.RequestMapping;[m
+[31m-import org.springframework.web.bind.annotation.RestController;[m
+[32m+[m[32mimport org.springframework.web.bind.annotation.*;[m
+ [m
+ @RestController[m
+ @RequestMapping("/api/auth")[m
+[36m@@ -25,7 +24,13 @@[m [mpublic class AuthController {[m
+     }[m
+ [m
+     @PostMapping("/login")[m
+[31m-    public User login(@RequestBody LoginRequest request) {[m
+[32m+[m[32m    public AuthResponse login(@RequestBody LoginRequest request) {[m
+         return authService.login(request);[m
+     }[m
+[32m+[m[32m    @PostMapping("/refresh")[m
+[32m+[m[32mpublic AuthResponse refreshToken([m
+[32m+[m[32m        @RequestBody RefreshTokenRequest request[m
+[32m+[m[32m) {[m
+[32m+[m[32m    return authService.refreshToken(request);[m
+[32m+[m[32m}[m
+ }[m
+\ No newline at end of file[m
+[1mdiff --git a/app/src/main/java/org/example/service/AuthService.java b/app/src/main/java/org/example/service/AuthService.java[m
+[1mindex 5d858e9..da4e499 100644[m
+[1m--- a/app/src/main/java/org/example/service/AuthService.java[m
+[1m+++ b/app/src/main/java/org/example/service/AuthService.java[m
+[36m@@ -1,9 +1,12 @@[m
+ package org.example.service;[m
+ [m
+[32m+[m[32mimport org.example.dto.AuthResponse;[m
+ import org.example.dto.LoginRequest;[m
+[32m+[m[32mimport org.example.dto.RefreshTokenRequest;[m
+ import org.example.dto.SignupRequest;[m
+ import org.example.entity.User;[m
+ import org.example.repository.UserRepository;[m
+[32m+[m[32mimport org.example.security.JwtService;[m
+ import org.springframework.security.crypto.password.PasswordEncoder;[m
+ import org.springframework.stereotype.Service;[m
+ [m
+[36m@@ -14,13 +17,16 @@[m [mpublic class AuthService {[m
+ [m
+     private final UserRepository userRepository;[m
+     private final PasswordEncoder passwordEncoder;[m
+[32m+[m[32m    private final JwtService jwtService;[m
+ [m
+     public AuthService([m
+             UserRepository userRepository,[m
+[31m-            PasswordEncoder passwordEncoder[m
+[32m+[m[32m            PasswordEncoder passwordEncoder,[m
+[32m+[m[32m            JwtService jwtService[m
+     ) {[m
+         this.userRepository = userRepository;[m
+         this.passwordEncoder = passwordEncoder;[m
+[32m+[m[32m        this.jwtService = jwtService;[m
+     }[m
+ [m
+     public User signup(SignupRequest request) {[m
+[36m@@ -37,7 +43,7 @@[m [mpublic class AuthService {[m
+         return userRepository.save(user);[m
+     }[m
+ [m
+[31m-    public User login(LoginRequest request) {[m
+[32m+[m[32m    public AuthResponse login(LoginRequest request) {[m
+ [m
+         Optional<User> userOptional =[m
+                 userRepository.findByEmail(request.getEmail());[m
+[36m@@ -57,6 +63,30 @@[m [mpublic class AuthService {[m
+             throw new RuntimeException("Invalid password");[m
+         }[m
+ [m
+[31m-        return user;[m
+[32m+[m[32m        String accessToken =[m
+[32m+[m[32m                jwtService.generateAccessToken(user.getEmail());[m
+[32m+[m
+[32m+[m[32m        String refreshToken =[m
+[32m+[m[32m                jwtService.generateRefreshToken(user.getEmail());[m
+[32m+[m
+[32m+[m[32m        return new AuthResponse(accessToken, refreshToken);[m
+[32m+[m[32m    }[m
+[32m+[m[32m    public AuthResponse refreshToken(RefreshTokenRequest request) {[m
+[32m+[m
+[32m+[m[32m    String refreshToken = request.getRefreshToken();[m
+[32m+[m
+[32m+[m[32m    if (!jwtService.isTokenValid(refreshToken)) {[m
+[32m+[m[32m        throw new RuntimeException("Invalid or expired refresh token");[m
+     }[m
+[32m+[m
+[32m+[m[32m    String email = jwtService.extractEmail(refreshToken);[m
+[32m+[m
+[32m+[m[32m    String newAccessToken =[m
+[32m+[m[32m            jwtService.generateAccessToken(email);[m
+[32m+[m
+[32m+[m[32m    return new AuthResponse([m
+[32m+[m[32m            newAccessToken,[m
+[32m+[m[32m            refreshToken[m
+[32m+[m[32m    );[m
+[32m+[m[32m}[m
+ }[m
+\ No newline at end of file[m

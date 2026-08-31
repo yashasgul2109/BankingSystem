@@ -1,9 +1,12 @@
 package org.example.service;
 
+import org.example.dto.AuthResponse;
 import org.example.dto.LoginRequest;
+import org.example.dto.RefreshTokenRequest;
 import org.example.dto.SignupRequest;
 import org.example.entity.User;
 import org.example.repository.UserRepository;
+import org.example.security.JwtService;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -14,13 +17,16 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
 
     public AuthService(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            JwtService jwtService
     ) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtService = jwtService;
     }
 
     public User signup(SignupRequest request) {
@@ -37,7 +43,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    public User login(LoginRequest request) {
+    public AuthResponse login(LoginRequest request) {
 
         Optional<User> userOptional =
                 userRepository.findByEmail(request.getEmail());
@@ -57,6 +63,30 @@ public class AuthService {
             throw new RuntimeException("Invalid password");
         }
 
-        return user;
+        String accessToken =
+                jwtService.generateAccessToken(user.getEmail());
+
+        String refreshToken =
+                jwtService.generateRefreshToken(user.getEmail());
+
+        return new AuthResponse(accessToken, refreshToken);
     }
+    public AuthResponse refreshToken(RefreshTokenRequest request) {
+
+    String refreshToken = request.getRefreshToken();
+
+    if (!jwtService.isTokenValid(refreshToken)) {
+        throw new RuntimeException("Invalid or expired refresh token");
+    }
+
+    String email = jwtService.extractEmail(refreshToken);
+
+    String newAccessToken =
+            jwtService.generateAccessToken(email);
+
+    return new AuthResponse(
+            newAccessToken,
+            refreshToken
+    );
+}
 }

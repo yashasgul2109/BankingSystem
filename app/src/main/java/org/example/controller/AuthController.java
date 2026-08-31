@@ -1,13 +1,12 @@
 package org.example.controller;
 
+import org.example.dto.AuthResponse;
 import org.example.dto.LoginRequest;
+import org.example.dto.RefreshTokenRequest;
 import org.example.dto.SignupRequest;
 import org.example.entity.User;
 import org.example.service.AuthService;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -25,7 +24,13 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public User login(@RequestBody LoginRequest request) {
+    public AuthResponse login(@RequestBody LoginRequest request) {
         return authService.login(request);
     }
+    @PostMapping("/refresh")
+public AuthResponse refreshToken(
+        @RequestBody RefreshTokenRequest request
+) {
+    return authService.refreshToken(request);
+}
 }
