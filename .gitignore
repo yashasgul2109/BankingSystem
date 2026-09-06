@@ -20,3 +20,6 @@ Thumbs.db
 # Environment / secrets
 .env
 application-local.properties
+
+node_modules/
+.env
