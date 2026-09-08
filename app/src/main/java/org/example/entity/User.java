@@ -18,4 +18,8 @@ public class User {
     private String email;
 
     private String password;
+
+    @OneToOne
+    @JoinColumn(name = "bank_account_id")
+    private BankAccount bankAccount;
 }
